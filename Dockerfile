@@ -7,11 +7,12 @@ RUN groupadd -r efaps && useradd -r -g efaps efaps
 #update the standart ubuntutomost current
 RUN apt-get update && apt-get upgrade -y 
 
-#install Java 8
+#install Java 8, curl, tar
 RUN apt-get install openjdk-8-jdk -y --no-install-recommends \
-	 && apt-get install curl -y --no-install-recommends
+	 && apt-get install curl -y --no-install-recommends \
+	 && apt-get install tar -y --no-install-recommends
 
-ENV JETTY_HOME /efaps
+ENV JETTY_HOME /efaps/jetty
 RUN mkdir -p "$JETTY_HOME"
 
 
@@ -33,4 +34,11 @@ RUN set -xe \
         && for key in $JETTY_GPG_KEYS; do \
                 gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; done \
 	&& gpg --batch --verify jetty.tar.gz.asc jetty.tar.gz \
-	&& rm -r "$GNUPGHOME"        
+	&& rm -r "$GNUPGHOME" \
+	&& tar -xvf jetty.tar.gz --strip-components=1 --directory "$JETTY_HOME" \
+	&& rm jetty.tar.gz*     
+	
+ENV JETTY_BASE /efaps/webbase
+RUN mkdir -p "$JETTY_BASE"
+WORKDIR $JETTY_BASE
+
