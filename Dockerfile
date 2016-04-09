@@ -43,11 +43,12 @@ RUN set -xe \
 
 #Where your specific set of webapps will be located, including all of the configuration required of the server to make them operational.	
 ENV JETTY_BASE /opt/web/efapsbase
-RUN mkdir -p "$JETTY_BASE"/logs
+RUN mkdir -p "$JETTY_BASE"/logs \
+	&& mkdir -p "$JETTY_BASE" "webapps" 
 	 
 WORKDIR $JETTY_BASE
 
-RUN java -jar "$JETTY_HOME/start.jar" --add-to-startd=http,plus,jaas
+RUN java -jar "$JETTY_HOME/start.jar" --add-to-startd=http,https,plus,jaas,deploy,jndi,server,ssl
 
 ENV JETTY_RUN /run/jetty
 ENV JETTY_STATE $JETTY_RUN/jetty.state
@@ -57,20 +58,15 @@ RUN set -xe \
 	&& mkdir -p "$JETTY_RUN" "$TMPDIR" \
 	&& chown -R efaps:efaps "$JETTY_HOME" "$JETTY_RUN" "$TMPDIR" "$JETTY_BASE"
 
-# create the start script for daemon run
-#RUN cp "$JETTY_HOME/bin/jetty.sh" /etc/init.d/jetty
-#RUN echo "JETTY_HOME=$JETTY_HOME" > /etc/default/jetty 
-#RUN	echo "JETTY_BASE=$JETTY_BASE" >> /etc/default/jetty 
-#RUN	echo "JETTY_STATE=$JETTY_STATE" >> /etc/default/jetty 
-#RUN	echo "JETTY_LOGS=$JETTY_BASE/logs" >> /etc/default/jetty 
-#RUN	echo "JETTY_USER=efaps" >> /etc/default/jetty
-#RUN echo "TMPDIR=$TMPDIR" >> /etc/default/jetty
-	
-# make the port 8080 accessible	
-EXPOSE 8080
 
 COPY docker-entrypoint.bash /
 RUN chmod +x /docker-entrypoint.bash
+
+USER efaps
+
+# make the port 8080 accessible	
+EXPOSE 8080 8443
+VOLUME ["/opt/web/efapsbase/webapps"]
 
 ENTRYPOINT ["/docker-entrypoint.bash"]
 
