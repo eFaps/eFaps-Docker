@@ -70,5 +70,7 @@ RUN	echo "JETTY_USER=efaps" >> /etc/default/jetty
 # make the port 8080 accessible	
 EXPOSE 8080
 
-#ENTRYPOINT ["java","-Djava.io.tmpdir=/tmp/jetty","-jar","/usr/local/jetty/start.jar"]
+ENTRYPOINT ["service","jetty","start"]
+
+
 
