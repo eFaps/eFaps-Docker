@@ -12,7 +12,8 @@ RUN apt-get install openjdk-8-jdk -y --no-install-recommends \
 	 && apt-get install curl -y --no-install-recommends \
 	 && apt-get install tar -y --no-install-recommends
 
-ENV JETTY_HOME /usr/local/jetty
+#Where the Jetty Distribution will be unpacked into
+ENV JETTY_HOME /opt/jetty
 ENV PATH $JETTY_HOME/bin:$PATH
 RUN mkdir -p "$JETTY_HOME"
 WORKDIR $JETTY_HOME
@@ -39,9 +40,11 @@ RUN set -xe \
 	&& tar -xvf jetty.tar.gz --strip-components=1 --directory "$JETTY_HOME" \
 	&& rm -fr demo-base javadoc \
 	&& rm jetty.tar.gz*     
-	
-ENV JETTY_BASE /var/lib/jetty
-RUN mkdir -p "$JETTY_BASE"
+
+#Where your specific set of webapps will be located, including all of the configuration required of the server to make them operational.	
+ENV JETTY_BASE /opt/web/efapsbase
+RUN mkdir -p "$JETTY_BASE"/logs
+	 
 WORKDIR $JETTY_BASE
 
 RUN java -jar "$JETTY_HOME/start.jar" --add-to-startd=http,plus,jaas
@@ -52,4 +55,20 @@ ENV TMPDIR /tmp/jetty
 
 RUN set -xe \
 	&& mkdir -p "$JETTY_RUN" "$TMPDIR" \
-	&& chown -R efaps:efaps "$JETTY_RUN" "$TMPDIR" "$JETTY_BASE"
+	&& chown -R efaps:efaps "$JETTY_HOME" "$JETTY_RUN" "$TMPDIR" "$JETTY_BASE"
+
+# create the start script for daemon run
+RUN cp "$JETTY_HOME/bin/jetty.sh" /etc/init.d/jetty
+RUN echo "JETTY_HOME=$JETTY_HOME" > /etc/default/jetty 
+RUN	echo "JETTY_BASE=$JETTY_BASE" >> /etc/default/jetty 
+RUN	echo "JETTY_STATE=$JETTY_STATE" >> /etc/default/jetty 
+RUN	echo "JETTY_LOGS=$JETTY_BASE/logs" >> /etc/default/jetty 
+RUN	echo "JETTY_USER=efaps" >> /etc/default/jetty
+
+# RUN echo "TMPDIR=$TMPDIR" >> /etc/default/jetty
+	
+# make the port 8080 accessible	
+EXPOSE 8080
+
+#ENTRYPOINT ["java","-Djava.io.tmpdir=/tmp/jetty","-jar","/usr/local/jetty/start.jar"]
+
