@@ -12,9 +12,10 @@ RUN apt-get install openjdk-8-jdk -y --no-install-recommends \
 	 && apt-get install curl -y --no-install-recommends \
 	 && apt-get install tar -y --no-install-recommends
 
-ENV JETTY_HOME /efaps/jetty
+ENV JETTY_HOME /usr/local/jetty
+ENV PATH $JETTY_HOME/bin:$PATH
 RUN mkdir -p "$JETTY_HOME"
-
+WORKDIR $JETTY_HOME
 
 ENV JETTY_VERSION 9.3.8.v20160314
 
@@ -36,9 +37,19 @@ RUN set -xe \
 	&& gpg --batch --verify jetty.tar.gz.asc jetty.tar.gz \
 	&& rm -r "$GNUPGHOME" \
 	&& tar -xvf jetty.tar.gz --strip-components=1 --directory "$JETTY_HOME" \
+	&& rm -fr demo-base javadoc \
 	&& rm jetty.tar.gz*     
 	
-ENV JETTY_BASE /efaps/webbase
+ENV JETTY_BASE /var/lib/jetty
 RUN mkdir -p "$JETTY_BASE"
 WORKDIR $JETTY_BASE
 
+RUN java -jar "$JETTY_HOME/start.jar" --add-to-startd=http,plus,jaas
+
+ENV JETTY_RUN /run/jetty
+ENV JETTY_STATE $JETTY_RUN/jetty.state
+ENV TMPDIR /tmp/jetty
+
+RUN set -xe \
+	&& mkdir -p "$JETTY_RUN" "$TMPDIR" \
+	&& chown -R efaps:efaps "$JETTY_RUN" "$TMPDIR" "$JETTY_BASE"
