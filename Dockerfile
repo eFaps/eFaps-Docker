@@ -58,19 +58,22 @@ RUN set -xe \
 	&& chown -R efaps:efaps "$JETTY_HOME" "$JETTY_RUN" "$TMPDIR" "$JETTY_BASE"
 
 # create the start script for daemon run
-RUN cp "$JETTY_HOME/bin/jetty.sh" /etc/init.d/jetty
-RUN echo "JETTY_HOME=$JETTY_HOME" > /etc/default/jetty 
-RUN	echo "JETTY_BASE=$JETTY_BASE" >> /etc/default/jetty 
-RUN	echo "JETTY_STATE=$JETTY_STATE" >> /etc/default/jetty 
-RUN	echo "JETTY_LOGS=$JETTY_BASE/logs" >> /etc/default/jetty 
-RUN	echo "JETTY_USER=efaps" >> /etc/default/jetty
-
-# RUN echo "TMPDIR=$TMPDIR" >> /etc/default/jetty
+#RUN cp "$JETTY_HOME/bin/jetty.sh" /etc/init.d/jetty
+#RUN echo "JETTY_HOME=$JETTY_HOME" > /etc/default/jetty 
+#RUN	echo "JETTY_BASE=$JETTY_BASE" >> /etc/default/jetty 
+#RUN	echo "JETTY_STATE=$JETTY_STATE" >> /etc/default/jetty 
+#RUN	echo "JETTY_LOGS=$JETTY_BASE/logs" >> /etc/default/jetty 
+#RUN	echo "JETTY_USER=efaps" >> /etc/default/jetty
+#RUN echo "TMPDIR=$TMPDIR" >> /etc/default/jetty
 	
 # make the port 8080 accessible	
 EXPOSE 8080
 
-ENTRYPOINT ["service","jetty","start"]
+COPY docker-entrypoint.bash /
+RUN chmod +x /docker-entrypoint.bash
 
+ENTRYPOINT ["/docker-entrypoint.bash"]
+
+CMD ["java","-Djava.io.tmpdir=/tmp/jetty","-jar","/opt/jetty/start.jar"]
 
 
