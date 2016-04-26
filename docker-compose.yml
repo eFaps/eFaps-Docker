@@ -13,5 +13,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - /eFaps/webapp:/opt/web/efapsbase/webapps
-      - /eFaps/logs:/opt/web/efapsbase/logs
+      - /eFaps/webapp:/opt/web/base/webapps
+      - /eFaps/logs:/opt/web/base/logs
+      - /eFaps/data:/opt/data
+    environment:
+      - JAAS_APPNAME=efaps

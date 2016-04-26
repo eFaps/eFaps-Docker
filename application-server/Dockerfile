@@ -42,9 +42,10 @@ RUN set -xe \
     && rm jetty.tar.gz*
 
 #Where your specific set of webapps will be located, including all of the configuration required of the server to make them operational.
-ENV JETTY_BASE /opt/web/efapsbase
+ENV JETTY_BASE /opt/web/base
 RUN mkdir -p "$JETTY_BASE"/logs \
-    && mkdir -p "$JETTY_BASE"/webapps
+    && mkdir -p "$JETTY_BASE"/webapps \
+    && mkdir -p /opt/data
 
 WORKDIR $JETTY_BASE
 
@@ -63,7 +64,7 @@ ENV TMPDIR /tmp/jetty
 
 RUN set -xe \
     && mkdir -p "$JETTY_RUN" "$TMPDIR" \
-    && chown -R efaps:efaps "$JETTY_HOME" "$JETTY_RUN" "$TMPDIR" "$JETTY_BASE"
+    && chown -R efaps:efaps "$JETTY_HOME" "$JETTY_RUN" "$TMPDIR" /opt
 
 
 COPY docker-entrypoint.sh /
@@ -73,7 +74,9 @@ USER efaps
 
 # make the port 8080 accessible
 EXPOSE 8080 8443
-VOLUME ["/opt/web/efapsbase/webapps"]
+VOLUME ["/opt/web/base/webapps"]
+VOLUME ["/opt/web/base/logs"]
+VOLUME ["/opt/data"]
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
