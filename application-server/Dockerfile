@@ -5,12 +5,12 @@ MAINTAINER Jan Moxter <jan.moxter@innobix.com>
 RUN groupadd -r efaps && useradd -r -g efaps efaps
 
 #update the standart ubuntutomost current
-RUN apt-get update && apt-get upgrade -y 
+RUN apt-get update && apt-get upgrade -y
 
 #install Java 8, curl, tar
 RUN apt-get install openjdk-8-jdk -y --no-install-recommends \
-	 && apt-get install curl -y --no-install-recommends \
-	 && apt-get install tar -y --no-install-recommends
+     && apt-get install curl -y --no-install-recommends \
+     && apt-get install tar -y --no-install-recommends
 
 #Where the Jetty Distribution will be unpacked into
 ENV JETTY_HOME /opt/jetty
@@ -28,24 +28,25 @@ ENV JETTY_GPG_KEYS \
        B59B67FD7904984367F931800818D9D68FB67BAC \
        # 1024D/D7C58886 2010-03-09 Jesse McConnell (signing key) <jesse.mcconnell@gmail.com>
        5DE533CB43DAF8BC3E372283E7AE839CD7C58886
-       
+
 RUN set -xe \
-	&& curl -SL "$JETTY_TGZ_URL" -o jetty.tar.gz \
-	&& curl -SL "$JETTY_TGZ_URL.asc" -o jetty.tar.gz.asc \
+    && curl -SL "$JETTY_TGZ_URL" -o jetty.tar.gz \
+    && curl -SL "$JETTY_TGZ_URL.asc" -o jetty.tar.gz.asc \
         && export GNUPGHOME="$(mktemp -d)" \
         && for key in $JETTY_GPG_KEYS; do \
                 gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; done \
-	&& gpg --batch --verify jetty.tar.gz.asc jetty.tar.gz \
-	&& rm -r "$GNUPGHOME" \
-	&& tar -xvf jetty.tar.gz --strip-components=1 --directory "$JETTY_HOME" \
-	&& rm -fr demo-base javadoc \
-	&& rm jetty.tar.gz*     
+    && gpg --batch --verify jetty.tar.gz.asc jetty.tar.gz \
+    && rm -r "$GNUPGHOME" \
+    && tar -xvf jetty.tar.gz --strip-components=1 --directory "$JETTY_HOME" \
+    && rm -fr demo-base javadoc \
+    && rm jetty.tar.gz*
 
-#Where your specific set of webapps will be located, including all of the configuration required of the server to make them operational.	
+#Where your specific set of webapps will be located, including all of the configuration required of the server to make them operational.
 ENV JETTY_BASE /opt/web/efapsbase
 RUN mkdir -p "$JETTY_BASE"/logs \
-	&& mkdir -p "$JETTY_BASE" "webapps" 
-	 
+    && mkdir -p "$JETTY_BASE"/webapps \
+    && mkdir -p "$JETTY_BASE"/etc
+
 WORKDIR $JETTY_BASE
 
 RUN java -jar "$JETTY_HOME/start.jar" --add-to-startd=http,https,plus,jaas,deploy,jndi,server,ssl
@@ -55,20 +56,20 @@ ENV JETTY_STATE $JETTY_RUN/jetty.state
 ENV TMPDIR /tmp/jetty
 
 RUN set -xe \
-	&& mkdir -p "$JETTY_RUN" "$TMPDIR" \
-	&& chown -R efaps:efaps "$JETTY_HOME" "$JETTY_RUN" "$TMPDIR" "$JETTY_BASE"
+    && mkdir -p "$JETTY_RUN" "$TMPDIR" \
+    && chown -R efaps:efaps "$JETTY_HOME" "$JETTY_RUN" "$TMPDIR" "$JETTY_BASE"
 
 
-COPY docker-entrypoint.bash /
-RUN chmod +x /docker-entrypoint.bash
+COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
 
 USER efaps
 
-# make the port 8080 accessible	
+# make the port 8080 accessible
 EXPOSE 8080 8443
 VOLUME ["/opt/web/efapsbase/webapps"]
 
-ENTRYPOINT ["/docker-entrypoint.bash"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 CMD ["java","-Djava.io.tmpdir=/tmp/jetty","-jar","/opt/jetty/start.jar"]
 

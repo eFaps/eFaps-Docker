@@ -1,75 +1,59 @@
 FROM ubuntu:16.04
 MAINTAINER Jan Moxter <jan.moxter@innobix.com>
 
-# add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
-RUN groupadd -r efaps && useradd -r -g efaps efaps
+# explicitly set user/group IDs
+RUN groupadd -r postgres --gid=999 && useradd -r -g postgres --uid=999 postgres
 
-#update the standart ubuntutomost current
-RUN apt-get update && apt-get upgrade -y 
+# grab gosu for easy step-down from root
+ENV GOSU_VERSION 1.7
+RUN set -x \
+    && apt-get update && apt-get install -y --no-install-recommends ca-certificates wget && rm -rf /var/lib/apt/lists/* \
+    && wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture)" \
+    && wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$(dpkg --print-architecture).asc" \
+    && export GNUPGHOME="$(mktemp -d)" \
+    && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4 \
+    && gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu \
+    && rm -r "$GNUPGHOME" /usr/local/bin/gosu.asc \
+    && chmod +x /usr/local/bin/gosu \
+    && gosu nobody true \
+    && apt-get purge -y --auto-remove ca-certificates wget
 
-#install Java 8, curl, tar
-RUN apt-get install openjdk-8-jdk -y --no-install-recommends \
-	 && apt-get install curl -y --no-install-recommends \
-	 && apt-get install tar -y --no-install-recommends
+# make the "en_US.UTF-8" locale so postgres will be utf-8 enabled by default
+RUN apt-get update && apt-get install -y locales && rm -rf /var/lib/apt/lists/* \
+    && localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
+ENV LANG en_US.utf8
 
-#Where the Jetty Distribution will be unpacked into
-ENV JETTY_HOME /opt/jetty
-ENV PATH $JETTY_HOME/bin:$PATH
-RUN mkdir -p "$JETTY_HOME"
-WORKDIR $JETTY_HOME
+RUN mkdir /docker-entrypoint-initdb.d
 
-ENV JETTY_VERSION 9.3.8.v20160314
+RUN apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
 
-ENV JETTY_TGZ_URL https://repo1.maven.org/maven2/org/eclipse/jetty/jetty-distribution/$JETTY_VERSION/jetty-distribution-$JETTY_VERSION.tar.gz
+ENV PG_MAJOR 9.5
+ENV PG_VERSION 9.5.2-1.pgdg80+1
 
-# GPG Keys are personal keys of Jetty committers (see https://dev.eclipse.org/mhonarc/lists/jetty-users/msg05220.html)
-ENV JETTY_GPG_KEYS \
-       # 1024D/8FB67BAC 2006-12-10 Joakim Erdfelt <joakime@apache.org>
-       B59B67FD7904984367F931800818D9D68FB67BAC \
-       # 1024D/D7C58886 2010-03-09 Jesse McConnell (signing key) <jesse.mcconnell@gmail.com>
-       5DE533CB43DAF8BC3E372283E7AE839CD7C58886
-       
-RUN set -xe \
-	&& curl -SL "$JETTY_TGZ_URL" -o jetty.tar.gz \
-	&& curl -SL "$JETTY_TGZ_URL.asc" -o jetty.tar.gz.asc \
-        && export GNUPGHOME="$(mktemp -d)" \
-        && for key in $JETTY_GPG_KEYS; do \
-                gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; done \
-	&& gpg --batch --verify jetty.tar.gz.asc jetty.tar.gz \
-	&& rm -r "$GNUPGHOME" \
-	&& tar -xvf jetty.tar.gz --strip-components=1 --directory "$JETTY_HOME" \
-	&& rm -fr demo-base javadoc \
-	&& rm jetty.tar.gz*     
+RUN echo 'deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main' $PG_MAJOR > /etc/apt/sources.list.d/pgdg.list
 
-#Where your specific set of webapps will be located, including all of the configuration required of the server to make them operational.	
-ENV JETTY_BASE /opt/web/efapsbase
-RUN mkdir -p "$JETTY_BASE"/logs \
-	&& mkdir -p "$JETTY_BASE" "webapps" 
-	 
-WORKDIR $JETTY_BASE
+RUN apt-get update \
+    && apt-get install -y postgresql-common \
+    && sed -ri 's/#(create_main_cluster) .*$/\1 = false/' /etc/postgresql-common/createcluster.conf \
+    && apt-get install -y \
+        postgresql-$PG_MAJOR=$PG_VERSION \
+        postgresql-contrib-$PG_MAJOR=$PG_VERSION \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN java -jar "$JETTY_HOME/start.jar" --add-to-startd=http,https,plus,jaas,deploy,jndi,server,ssl
+# make the sample config easier to munge (and "correct by default")
+RUN mv -v /usr/share/postgresql/$PG_MAJOR/postgresql.conf.sample /usr/share/postgresql/ \
+    && ln -sv ../postgresql.conf.sample /usr/share/postgresql/$PG_MAJOR/ \
+    && sed -ri "s!^#?(listen_addresses)\s*=\s*\S+.*!\1 = '*'!" /usr/share/postgresql/postgresql.conf.sample
 
-ENV JETTY_RUN /run/jetty
-ENV JETTY_STATE $JETTY_RUN/jetty.state
-ENV TMPDIR /tmp/jetty
+RUN mkdir -p /var/run/postgresql && chown -R postgres /var/run/postgresql
 
-RUN set -xe \
-	&& mkdir -p "$JETTY_RUN" "$TMPDIR" \
-	&& chown -R efaps:efaps "$JETTY_HOME" "$JETTY_RUN" "$TMPDIR" "$JETTY_BASE"
+ENV PATH /usr/lib/postgresql/$PG_MAJOR/bin:$PATH
+ENV PGDATA /var/lib/postgresql/data
+VOLUME /var/lib/postgresql/data
 
+COPY docker-entrypoint.sh /
 
-COPY docker-entrypoint.bash /
-RUN chmod +x /docker-entrypoint.bash
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
-USER efaps
-
-# make the port 8080 accessible	
-EXPOSE 8080 8443
-VOLUME ["/opt/web/efapsbase/webapps"]
-
-ENTRYPOINT ["/docker-entrypoint.bash"]
-
-CMD ["java","-Djava.io.tmpdir=/tmp/jetty","-jar","/opt/jetty/start.jar"]
-
-
+EXPOSE 5432
+CMD ["postgres"]

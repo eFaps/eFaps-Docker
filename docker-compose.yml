@@ -1,0 +1,17 @@
+version: '2'
+services:
+  database:
+    image: postgres:9.5
+    ports:
+      - "5433:5432"
+    volumes:
+      - /eFaps/DBData:/var/lib/postgresql/data
+  application-server:
+    image: efaps/application-server
+    depends_on:
+      - database
+    ports:
+      - "8080:8080"
+    volumes:
+      - /eFaps/webapp:/opt/web/efapsbase/webapps
+      - /eFaps/logs:/opt/web/efapsbase/logs
