@@ -1,11 +1,11 @@
 FROM ubuntu:16.04
 MAINTAINER Jan Moxter <jan.moxter@innobix.com>
 
-# add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
-RUN groupadd -r efaps && useradd -r -g efaps efaps
-
 #update the standart ubuntutomost current
 RUN apt-get update && apt-get upgrade -y
+
+# add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
+RUN groupadd -r efaps && useradd -r -g efaps efaps
 
 #install Java 8, curl, tar
 RUN apt-get install openjdk-8-jdk -y --no-install-recommends \
@@ -44,12 +44,18 @@ RUN set -xe \
 #Where your specific set of webapps will be located, including all of the configuration required of the server to make them operational.
 ENV JETTY_BASE /opt/web/efapsbase
 RUN mkdir -p "$JETTY_BASE"/logs \
-    && mkdir -p "$JETTY_BASE"/webapps \
-    && mkdir -p "$JETTY_BASE"/etc
+    && mkdir -p "$JETTY_BASE"/webapps
 
 WORKDIR $JETTY_BASE
 
 RUN java -jar "$JETTY_HOME/start.jar" --add-to-startd=http,https,plus,jaas,deploy,jndi,server,ssl
+
+RUN /bin/echo efaps {  > "$JETTY_BASE/etc/login.conf"
+RUN /bin/echo org.efaps.jaas.efaps.UserLoginModule >> "$JETTY_BASE/etc/login.conf"
+RUN /bin/echo SUFFICIENT >> "$JETTY_BASE/etc/login.conf"
+RUN /bin/echo debug=true >> "$JETTY_BASE/etc/login.conf"
+RUN /bin/echo jaasSystem="\""eFaps"\";" >> "$JETTY_BASE/etc/login.conf"
+RUN /bin/echo "};" >> "$JETTY_BASE/etc/login.conf"
 
 ENV JETTY_RUN /run/jetty
 ENV JETTY_STATE $JETTY_RUN/jetty.state
