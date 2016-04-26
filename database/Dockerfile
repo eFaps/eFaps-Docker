@@ -54,6 +54,7 @@ ENV PGDATA /var/lib/postgresql/data
 VOLUME /var/lib/postgresql/data
 
 COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 

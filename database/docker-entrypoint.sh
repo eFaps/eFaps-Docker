@@ -24,7 +24,7 @@ if [ "$1" = 'postgres' ]; then
             authMethod=md5
         else
             # The - option suppresses leading tabs but *not* spaces. :)
-            cat >&2 <<-'EOWARN'
+cat >&2 <<-'EOWARN'
                 ****************************************************
                 WARNING: No password has been set for the database.
                          This will allow anyone with access to the
@@ -35,7 +35,7 @@ if [ "$1" = 'postgres' ]; then
                          Use "-e POSTGRES_PASSWORD=password" to set
                          it in "docker run".
                 ****************************************************
-            EOWARN
+EOWARN
 
             pass=
             authMethod=trust
@@ -56,9 +56,9 @@ if [ "$1" = 'postgres' ]; then
         psql=( psql -v ON_ERROR_STOP=1 )
 
         if [ "$POSTGRES_DB" != 'postgres' ]; then
-            "${psql[@]}" --username postgres <<-EOSQL
+"${psql[@]}" --username postgres <<-EOSQL
                 CREATE DATABASE "$POSTGRES_DB" ;
-            EOSQL
+EOSQL
             echo
         fi
 
@@ -67,9 +67,9 @@ if [ "$1" = 'postgres' ]; then
         else
             op='CREATE'
         fi
-        "${psql[@]}" --username postgres <<-EOSQL
+"${psql[@]}" --username postgres <<-EOSQL
             $op USER "$POSTGRES_USER" WITH SUPERUSER $pass ;
-        EOSQL
+EOSQL
         echo
 
         psql+=( --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" )
