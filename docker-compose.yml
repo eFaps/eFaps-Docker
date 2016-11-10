@@ -17,4 +17,4 @@ services:
       - /eFaps/logs:/opt/web/base/logs
       - /eFaps/data:/opt/data
     environment:
-      - JAAS_APPNAME=efaps
+      - JAAS_APPNAME=innobierto
